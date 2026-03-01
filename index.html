@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickNotes Generator - MCQ Quiz Builder</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- PDF and DOCX Processing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/index.umd.min.js"></script>
+    <!-- Tesseract.js for OCR -->
+    <script async src="https://cdn.jsdelivr.net/npm/tesseract.js@v2.1.5/dist/tesseract.min.js"></script>
+    <!-- Multi-Language Support -->
+    <script src="languages.js"></script>
+    <!-- Study Ludo Game -->
+    <script src="study-ludo.js"></script>
+</head>
+<body>
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+    
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <button class="language-toggle" id="languageToggle" title="Select Language">🌐</button>
+        <div class="language-dropdown" id="languageDropdown" style="display: none;">
+            <button class="language-option" data-lang="en">🇺🇸 English</button>
+            <button class="language-option" data-lang="es">🇪🇸 Español</button>
+            <button class="language-option" data-lang="fr">🇫🇷 Français</button>
+            <button class="language-option" data-lang="de">🇩🇪 Deutsch</button>
+            <button class="language-option" data-lang="zh">🇨🇳 中文</button>
+            <button class="language-option" data-lang="hi">🇮🇳 हिन्दी</button>
+            <button class="language-option" data-lang="pt">🇵🇹 Português</button>
+        </div>
+    </div>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title" data-i18n="appTitle">📚 QuickNotes Generator</h1>
+                <p class="subtitle" data-i18n="appSubtitle">Transform Your Notes into Interactive MCQ Quizzes</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <section class="input-section" id="inputSection">
+                <div class="section-header">
+                    <h2 data-i18n="inputTitle">📝 Input Your Notes</h2>
+                    <span class="tips-icon" title="Click for tips">💡</span>
+                </div>
+                
+                <!-- File Upload Section -->
+                <div class="file-upload-section">
+                    <!-- Tabs to switch between file and image upload -->
+                    <div class="upload-tabs">
+                        <button class="tab-btn active" data-tab="file-upload" data-i18n="fileTabLabel">📄 Files</button>
+                        <button class="tab-btn" data-tab="image-upload" data-i18n="imageTabLabel">🖼️ Image (OCR)</button>
+                    </div>
+
+                    <!-- File Upload Tab -->
+                    <div class="upload-tab-content" id="file-upload">
+                        <div class="upload-area" id="uploadArea">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p class="upload-text" data-i18n="dragDropFiles">Drag and drop files here or <span class="upload-link">click to upload</span></p>
+                            <p class="upload-subtext" data-i18n="supportedFormats">Supported: TXT, PDF, DOCX, MD, CSV</p>
+                            <input type="file" id="fileInput" class="file-input" accept=".txt,.pdf,.docx,.md,.csv" multiple style="display: none;" />
+                        </div>
+                        <div class="uploaded-files" id="uploadedFiles"></div>
+                    </div>
+
+                    <!-- Image Upload Tab -->
+                    <div class="upload-tab-content" id="image-upload" style="display: none;">
+                        <div class="upload-area" id="imageUploadArea">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            <p class="upload-text" data-i18n="dragDropImages">Drag and drop images here or <span class="upload-link">click to upload</span></p>
+                            <p class="upload-subtext" data-i18n="imageFormats">Supported: JPG, PNG, GIF, WebP (Text will be extracted)</p>
+                            <input type="file" id="imageInput" class="file-input" accept="image/*" style="display: none;" />
+                        </div>
+                        <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                            <img id="imagePreview" class="image-preview" alt="Preview">
+                            <button class="remove-image-btn" id="removeImageBtn">✕ Remove</button>
+                        </div>
+                        <div class="ocr-status" id="ocrStatus" style="display: none;">
+                            <div class="ocr-loading">
+                                <div class="spinner"></div>
+                                <span id="ocrStatusText">Extracting text from image...</span>
+                            </div>
+                            <div class="extraction-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="ocrProgressFill"></div>
+                                </div>
+                                <span class="progress-text" id="ocrProgressText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-wrapper">
+                    <div class="textarea-toolbar">
+                        <button class="voice-btn" id="voiceBtn" title="Voice to Notes">
+                            <span class="voice-icon">🎤</span>
+                            <span class="voice-text" data-i18n="startRecording">Start Recording</span>
+                        </button>
+                        <span class="recording-indicator" id="recordingIndicator" style="display: none;">
+                            <span class="pulse"></span> Recording...
+                        </span>
+                    </div>
+                    <textarea 
+                        id="notesInput" 
+                        class="notes-textarea" 
+                        placeholder="Paste your notes here or upload a file...&#10;● Use bullet points or line breaks for each concept&#10;● Include definitions, examples, or key terms&#10;● The more detailed, the better the questions!&#10;&#10;Example:&#10;• Photosynthesis is the process by which plants convert light into chemical energy&#10;• Occurs in chloroplasts containing chlorophyll&#10;• Primary and secondary reactions&#10;• Produces glucose and oxygen"
+                    ></textarea>
+                    <div class="word-count">
+                        <span id="wordCount">0</span> words
+                    </div>
+                </div>
+
+                <div class="input-controls">
+                    <div class="difficulty-selector">
+                        <label for="difficulty" data-i18n="difficulty">Question Difficulty:</label>
+                        <select id="difficulty" class="difficulty-select">
+                            <option value="mixed" data-i18n="mixed">🎯 Mixed (All Levels)</option>
+                            <option value="easy" data-i18n="easy">🟢 Easy</option>
+                            <option value="medium" data-i18n="medium">🟡 Medium</option>
+                            <option value="hard" data-i18n="hard">🔴 Hard</option>
+                        </select>
+                    </div>
+
+                    <div class="question-count-selector">
+                        <label for="questionCount" data-i18n="questionCount">Number of Questions:</label>
+                        <input type="number" id="questionCount" class="question-count-input" min="3" max="20" value="5">
+                    </div>
+                </div>
+
+                <button class="generate-btn" id="generateBtn">
+                    <span class="btn-icon">✨</span>
+                    <span data-i18n="generateBtn">Generate MCQ Quiz</span>
+                </button>
+
+                <div class="additional-options">
+                    <button class="option-btn" id="flashcardBtn" title="Study with flashcards">
+                        <span class="option-icon">🎴</span>
+                        <span data-i18n="flashcards">Flashcards</span>
+                    </button>
+                    <button class="option-btn" id="mindmapBtn" title="View concept map">
+                        <span class="option-icon">🧠</span>
+                        <span data-i18n="mindmap">Mind Map</span>
+                    </button>
+                    <button class="option-btn" id="summaryBtn" title="Generate summary">
+                        <span class="option-icon">📋</span>
+                        <span data-i18n="summary">Summary</span>
+                    </button>
+                    <button class="option-btn" id="dashboardBtn" title="View performance stats">
+                        <span class="option-icon">📊</span>
+                        <span data-i18n="dashboard">Dashboard</span>
+                    </button>
+                    <button class="option-btn" id="pomodoroBtn" title="Pomodoro timer">
+                        <span class="option-icon">🍅</span>
+                        <span data-i18n="pomodoro">Pomodoro</span>
+                    </button>
+                    <button class="option-btn" id="bookmarksBtn" title="View bookmarked questions">
+                        <span class="option-icon">🔖</span>
+                        <span data-i18n="bookmarks">Bookmarks</span>
+                    </button>
+                    <button class="option-btn" id="exportBtn" title="Export notes">
+                        <span class="option-icon">📥</span>
+                        <span data-i18n="exportBtn">Export</span>
+                    </button>
+                    <button class="option-btn" id="quizPaperBtn" title="Generate quiz paper">
+                        <span class="option-icon">📄</span>
+                        <span data-i18n="quizPaper">Quiz Paper</span>
+                    </button>
+                    <button class="option-btn" id="studyLudoBtn" title="Play Study Ludo Game">
+                        <span class="option-icon">🎲</span>
+                        <span data-i18n="studyLudoGame">Study Ludo Game</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Session Stats (Header for all sections) -->
+            <div class="session-stats" id="sessionStats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-icon">⏱️</span>
+                    <span class="stat-data"><span id="sessionTime">0:00</span></span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🔥</span>
+                    <span class="stat-data"><span id="studyStreak">0</span> day streak</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">📈</span>
+                    <span class="stat-data"><span id="sessionScore">0</span>% avg</span>
+                </div>
+            </div>
+
+            <!-- Quiz Section -->
+            <section class="quiz-section" id="quizSection" style="display: none;">
+                <div class="section-header">
+                    <div class="header-left">
+                        <h2 data-i18n="quizTitle">🎯 Quiz Time!</h2>
+                        <div class="quiz-timer" id="quizTimer">
+                            <span class="timer-icon">⏰</span>
+                            <span class="timer-display" id="timerDisplay">∞</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <button class="bookmark-toggle" id="bookmarkToggle" title="Bookmark this question">🔖</button>
+                        <button class="reset-btn" id="resetBtn" title="Start Over">↺</button>
+                    </div>
+                </div>
+
+                <div class="quiz-controls-top">
+                    <label class="shuffle-toggle">
+                        <input type="checkbox" id="shuffleQuestions" checked>
+                        <span data-i18n="shuffleQuestions">🔀 Shuffle Questions</span>
+                    </label>
+                    <button class="quick-review-btn" id="quickReviewBtn" data-i18n="quickReview">⚡ Quick Review</button>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span data-i18n="questionOf">Question</span> <span id="currentQuestion">1</span> <span data-i18n="of">of</span> <span id="totalQuestions">5</span>
+                    </div>
+                </div>
+
+                <div class="questions-container" id="questionsContainer"></div>
+
+                <div class="confidence-selector">
+                    <label>How confident are you?</label>
+                    <div class="confidence-buttons">
+                        <button class="confidence-btn low" data-confidence="1" title="Not sure">😟</button>
+                        <button class="confidence-btn medium" data-confidence="2" title="Somewhat sure">🤔</button>
+                        <button class="confidence-btn high" data-confidence="3" title="Very sure">😊</button>
+                    </div>
+                </div>
+
+                <div class="quiz-controls">
+                    <button class="nav-btn prev-btn" id="prevBtn">← <span data-i18n="prevBtn">Previous</span> (←)</button>
+                    <button class="nav-btn next-btn" id="nextBtn"><span data-i18n="nextBtn">Next</span> → (→)</button>
+                    <button class="submit-btn" id="submitBtn" data-i18n="submitBtn">Submit Quiz (Enter)</button>
+                </div>
+                <div class="keyboard-hints">Tip: Use keyboard arrows ← → for navigation, Enter to submit</div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="section-header">
+                    <h2 data-i18n="resultsTitle">🎓 Quiz Results</h2>
+                </div>
+
+                <div class="results-summary">
+                    <div class="score-circle">
+                        <div class="score-text">
+                            <span class="score-number" id="scoreNumber">0</span>%
+                        </div>
+                        <svg class="score-ring" width="200" height="200">
+                            <circle class="score-ring-base" cx="100" cy="100" r="90"></circle>
+                            <circle class="score-ring-fill" cx="100" cy="100" r="90" id="scoreRing"></circle>
+                        </svg>
+                    </div>
+
+                    <div class="results-text">
+                        <h3 id="resultTitle">Great Job!</h3>
+                        <p id="resultMessage">You've completed the quiz! Review your answers below.</p>
+                        <div class="performance-category" id="performanceCategory"></div>
+                        <div class="results-stats">
+                            <div class="stat">
+                                <span class="stat-label">Correct</span>
+                                <span class="stat-value" id="correctCount">0</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Total</span>
+                                <span class="stat-value" id="totalCount">0</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Accuracy</span>
+                                <span class="stat-value" id="accuracy">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-review" id="resultsReview"></div>
+
+                <div class="results-actions">
+                    <button class="generate-btn" id="regenerateBtn">
+                        <span class="btn-icon">🔄</span>
+                        <span>Generate New Quiz</span>
+                    </button>
+                    <button class="practice-wrong-btn" id="practiceWrongBtn" style="display: none;">
+                        <span class="btn-icon">📖</span>
+                        <span>Practice Wrong Questions</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Flashcard Section -->
+            <section class="flashcard-section" id="flashcardSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🎴 Flashcard Study</h2>
+                    <button class="reset-btn" id="resetFlashcardBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="flashcard-stats">
+                    <div class="stat-small">
+                        <span>Card <span id="flashcardCurrent">1</span> of <span id="flashcardTotal">5</span></span>
+                    </div>
+                    <div class="stat-small">
+                        <span id="flashcardProgress">0%</span>
+                    </div>
+                </div>
+
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard">
+                        <div class="flashcard-inner">
+                            <div class="flashcard-front">
+                                <p class="flashcard-label">Concept</p>
+                                <p class="flashcard-text" id="flashcardConcept"></p>
+                            </div>
+                            <div class="flashcard-back">
+                                <p class="flashcard-label">Definition</p>
+                                <p class="flashcard-text" id="flashcardDefinition"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="flashcard-hint">Click card to flip</p>
+
+                <div class="flashcard-controls">
+                    <button class="nav-btn" id="prevFlashcardBtn">← Previous</button>
+                    <button class="nav-btn" id="nextFlashcardBtn">Next →</button>
+                </div>
+
+                <div class="flashcard-actions">
+                    <button class="action-btn familiar-btn" id="familiarBtn">👍 Familiar</button>
+                    <button class="action-btn review-btn" id="reviewBtn">🤔 Need Review</button>
+                    <button class="action-btn difficult-btn" id="difficultBtn">❌ Difficult</button>
+                </div>
+            </section>
+
+            <!-- Mind Map Section -->
+            <section class="mindmap-section" id="mindmapSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🧠 Concept Mind Map</h2>
+                    <button class="reset-btn" id="resetMindmapBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="mindmap-container" id="mindmapContainer"></div>
+            </section>
+
+            <!-- Summary Section -->
+            <section class="summary-section" id="summarySection" style="display: none;">
+                <div class="section-header">
+                    <h2>📋 Auto-Generated Summary</h2>
+                    <button class="reset-btn" id="resetSummaryBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="summary-tabs">
+                    <button class="tab-btn active" data-tab="key-points">🔑 Key Points</button>
+                    <button class="tab-btn" data-tab="definitions">📚 Definitions</button>
+                    <button class="tab-btn" data-tab="relationships">🔗 Relationships</button>
+                </div>
+
+                <div class="summary-content">
+                    <div class="tab-content active" id="key-points">
+                        <div class="summary-list" id="keyPointsList"></div>
+                    </div>
+                    <div class="tab-content" id="definitions">
+                        <div class="summary-list" id="definitionsList"></div>
+                    </div>
+                    <div class="tab-content" id="relationships">
+                        <div class="summary-list" id="relationshipsList"></div>
+                    </div>
+                </div>
+
+                <button class="export-summary-btn" id="exportSummaryBtn">📥 Export Summary</button>
+            </section>
+
+            <!-- Performance Dashboard Section -->
+            <section class="dashboard-section" id="dashboardSection" style="display: none;">
+                <div class="section-header">
+                    <h2>📊 Performance Dashboard</h2>
+                    <button class="reset-btn" id="resetDashboardBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3>📈 Overall Statistics</h3>
+                        <div class="stat-display">
+                            <div class="stat-row">
+                                <span>Total Quizzes:</span>
+                                <span class="stat-value" id="totalQuizzes">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Average Score:</span>
+                                <span class="stat-value" id="avgScore">0%</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Best Score:</span>
+                                <span class="stat-value" id="bestScore">0%</span>
+                            </div>
+                            <div class="stat-row">
+                                <span>Total Study Time:</span>
+                                <span class="stat-value" id="totalTime">0h 0m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>🎯 Concept Mastery</h3>
+                        <div class="mastery-list" id="masteryList"></div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>🔥 Study Streak</h3>
+                        <div class="streak-display" id="streakDisplay">
+                            <div class="streak-number" id="streakNumber">0</div>
+                            <div class="streak-label">Days</div>
+                            <button class="reset-streak-btn" id="resetStreakBtn">Reset Streak</button>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <h3>⏱️ Study Timeline</h3>
+                        <div class="timeline" id="timeline"></div>
+                    </div>
+                </div>
+
+                <div class="dashboard-actions">
+                    <button class="export-stats-btn" id="exportStatsBtn">📊 Export Statistics</button>
+                    <button class="clear-data-btn" id="clearDataBtn">🗑️ Clear All Data</button>
+                </div>
+            </section>
+
+            <!-- Pomodoro Timer Section -->
+            <section class="pomodoro-section" id="pomodoroSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🍅 Pomodoro Timer</h2>
+                    <button class="reset-btn" id="resetPomodoroBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="pomodoro-container">
+                    <div class="pomodoro-display">
+                        <div class="pomodoro-mode" id="pomodoroMode">Focus Time</div>
+                        <div class="pomodoro-timer" id="pomodoroTimer">25:00</div>
+                        <div class="pomodoro-progress" id="pomodoroProgress"></div>
+                    </div>
+
+                    <div class="pomodoro-controls">
+                        <button class="pomodoro-btn" id="startPomodoroBtn">▶️ Start</button>
+                        <button class="pomodoro-btn" id="pausePomodoroBtn" style="display: none;">⏸️ Pause</button>
+                        <button class="pomodoro-btn" id="resetPomodoroTimerBtn">🔄 Reset</button>
+                        <button class="pomodoro-btn skip" id="skipPomodoroBtn">⏭️ Skip</button>
+                    </div>
+
+                    <div class="pomodoro-settings">
+                        <label>
+                            Focus Time (min):
+                            <input type="number" id="focusTime" min="1" max="60" value="25">
+                        </label>
+                        <label>
+                            Break Time (min):
+                            <input type="number" id="breakTime" min="1" max="30" value="5">
+                        </label>
+                        <label class="sound-toggle">
+                            <input type="checkbox" id="pomodoroSound" checked>
+                            <span>🔊 Sound on break</span>
+                        </label>
+                    </div>
+
+                    <div class="pomodoro-stats">
+                        <p>Pomodoros Completed Today: <span id="pomodoresCompleted">0</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bookmarked Questions Section -->
+            <section class="bookmarks-section" id="bookmarksSection" style="display: none;">
+                <div class="section-header">
+                    <h2>🔖 Bookmarked Questions</h2>
+                    <button class="reset-btn" id="resetBookmarksBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="bookmarks-list" id="bookmarksList">
+                    <p class="empty-state">No bookmarked questions yet. Mark questions with 🔖 during the quiz!</p>
+                </div>
+
+                <div class="bookmarks-actions">
+                    <button class="bookmark-action-btn" id="reviewBookmarkedBtn">📚 Review These</button>
+                    <button class="bookmark-action-btn" id="clearBookmarksBtn">🗑️ Clear Bookmarks</button>
+                </div>
+            </section>
+
+            <!-- Quiz Paper Generator Section -->
+            <section class="quiz-paper-section" id="quizPaperSection" style="display: none;">
+                <div class="section-header">
+                    <h2>📄 Quiz Paper Generator</h2>
+                    <button class="reset-btn" id="resetQuizPaperBtn" title="Back to menu">← Back</button>
+                </div>
+
+                <div class="quiz-paper-container">
+                    <div class="quiz-paper-form">
+                        <div class="form-group">
+                            <label for="paperSubject">Subject/Topic:</label>
+                            <input type="text" id="paperSubject" class="form-input" placeholder="e.g., Biology, History, Mathematics" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paperQuestions">Number of Questions:</label>
+                            <input type="number" id="paperQuestions" class="form-input" min="5" max="50" value="10" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paperDifficulty">Difficulty Distribution:</label>
+                            <select id="paperDifficulty" class="form-select">
+                                <option value="mixed">🎯 Mixed (All Levels)</option>
+                                <option value="easy">🟢 Easy (60% Easy, 30% Medium, 10% Hard)</option>
+                                <option value="medium">🟡 Medium (20% Easy, 60% Medium, 20% Hard)</option>
+                                <option value="hard">🔴 Hard (10% Easy, 30% Medium, 60% Hard)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paperMarks">Total Marks:</label>
+                            <input type="number" id="paperMarks" class="form-input" min="10" max="200" value="100" step="5" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="markDistribution">Marks Per Question:</label>
+                            <select id="markDistribution" class="form-select">
+                                <option value="equal">🔹 Equal (Same marks for all)</option>
+                                <option value="variable">📊 Variable (By difficulty)</option>
+                                <option value="custom">⚙️ Custom</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="customMarkInput" style="display: none;">
+                            <label for="easyMarks">Easy Questions (marks each):</label>
+                            <input type="number" id="easyMarks" class="form-input" min="1" max="10" value="1" />
+                            <label for="mediumMarks" style="margin-top: 10px;">Medium Questions (marks each):</label>
+                            <input type="number" id="mediumMarks" class="form-input" min="1" max="10" value="2" />
+                            <label for="hardMarks" style="margin-top: 10px;">Hard Questions (marks each):</label>
+                            <input type="number" id="hardMarks" class="form-input" min="1" max="10" value="3" />
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="includeAnswerKey" checked /> Include Answer Key
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeSectionWiseBreakup" checked /> Section-wise Breakup
+                            </label>
+                            <label>
+                                <input type="checkbox" id="includeTimeLimit" /> Add Time Limit (in minutes)
+                            </label>
+                        </div>
+
+                        <div class="form-group" id="timeLimitInput" style="display: none;">
+                            <input type="number" id="timeLimit" class="form-input" min="5" max="180" value="60" placeholder="Time in minutes" />
+                        </div>
+
+                        <button class="generate-btn" id="generatePaperBtn">
+                            <span class="btn-icon">📝</span>
+                            <span>Generate Quiz Paper</span>
+                        </button>
+                    </div>
+
+                    <div class="quiz-paper-preview" id="quizPaperPreview" style="display: none;">
+                        <div class="paper-header">
+                            <button class="download-btn" id="downloadPaperBtn">📥 Download Paper (PDF)</button>
+                            <button class="print-btn" id="printPaperBtn">🖨️ Print</button>
+                            <button class="reset-paper-btn" id="resetPaperBtn">✏️ Generate New</button>
+                        </div>
+                        <div class="paper-content" id="paperContent"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Study Ludo Game Section -->
+            <section class="study-ludo-section" id="studyLudoSection" style="display: none;">
+                <div class="section-header">
+                    <h2 data-i18n="studyLudoTitle">🎲 Study Ludo Game</h2>
+                    <button class="reset-btn" id="studyLudoBackBtn" title="Back to Menu">← Back</button>
+                </div>
+
+                <!-- Room Selection/Creation -->
+                <div class="study-ludo-room-selector" id="studyLudoRoomSelector">
+                    <div class="room-options">
+                        <div class="option-panel">
+                            <h3>Create New Room</h3>
+                            <input type="text" id="playerNameCreate" placeholder="Enter your name" class="form-input">
+                            <button id="createRoomBtn" class="btn btn-primary">Create Room</button>
+                            <p class="room-id-display" id="roomIdDisplay" style="display: none;">
+                                Room ID: <strong id="roomIdValue"></strong>
+                                <button class="copy-btn" id="copyRoomId">Copy</button>
+                            </p>
+                        </div>
+
+                        <div class="option-panel">
+                            <h3>Join Existing Room</h3>
+                            <input type="text" id="playerNameJoin" placeholder="Enter your name" class="form-input">
+                            <input type="text" id="roomIdInput" placeholder="Enter room ID" class="form-input">
+                            <button id="joinRoomBtn" class="btn btn-primary">Join Room</button>
+                            <div class="available-rooms" id="availableRoomsList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Waiting Room -->
+                <div class="study-ludo-waiting-room" id="studyLudoWaitingRoom" style="display: none;">
+                    <h3>Waiting for Players...</h3>
+                    <div class="players-list">
+                        <h4>Players in Room:</h4>
+                        <div id="playersListContainer" class="players-container"></div>
+                    </div>
+                    <button id="startGameBtn" class="btn btn-success" style="display: none;">Start Game</button>
+                    <p class="game-info">Waiting for at least 2 players to start...</p>
+                </div>
+
+                <!-- Game Board -->
+                <div class="study-ludo-game-board" id="studyLudoGameBoard" style="display: none;">
+                    <div class="game-stats">
+                        <div class="current-player" id="currentPlayerInfo"></div>
+                        <div class="dice-section">
+                            <button id="diceBtn" class="dice-btn">🎲 Roll Dice</button>
+                            <div class="dice-result" id="diceResult"></div>
+                        </div>
+                    </div>
+
+                    <div class="board-container">
+                        <div class="study-ludo-board" id="studyLudoBoard"></div>
+                    </div>
+
+                    <div class="game-controls">
+                        <div class="pieces-selector" id="piecesSelector"></div>
+                        <button id="skipTurnBtn" class="btn btn-secondary">Skip Turn</button>
+                        <button id="endGameBtn" class="btn btn-danger">End Game</button>
+                    </div>
+
+                    <div class="scoreboard">
+                        <h4>Scores</h4>
+                        <div id="scoreboardContent" class="scores-list"></div>
+                    </div>
+                </div>
+
+                <!-- Game Over Screen -->
+                <div class="study-ludo-game-over" id="studyLudoGameOver" style="display: none;">
+                    <div class="winner-announcement">
+                        <h2 id="winnerName">Player Won! 🎉</h2>
+                        <div class="final-scores" id="finalScores"></div>
+                    </div>
+                    <div class="game-over-buttons">
+                        <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+                        <button id="backToMenuBtn" class="btn btn-secondary">Back to Menu</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ❤️ for Better Learning | Upload PDF, DOCX, TXT files or paste notes directly</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
