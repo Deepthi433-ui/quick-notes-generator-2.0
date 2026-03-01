@@ -1,0 +1,1 @@
+# quick-notes-generator-2.0
